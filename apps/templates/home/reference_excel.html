@@ -1,0 +1,216 @@
+{% extends 'layouts/base.html' %}
+
+{% block title %} Generate Plan {% endblock title %}
+
+<!-- Specific CSS goes HERE -->
+{% block stylesheets %}{% endblock stylesheets %}
+
+{% block content %}
+
+    <!-- Header -->
+    <div class="header bg-primary pb-6">
+        <div class="container-fluid">
+            <div class="header-body">
+                <div class="row align-items-center py-4">
+                    <div class="col-lg-6 col-7">
+                        <h6 class="h2 text-white d-inline-block mb-0">Default</h6>
+                        <nav aria-label="breadcrumb" class="d-none d-md-inline-block ml-md-4">
+                            <ol class="breadcrumb breadcrumb-links breadcrumb-dark">
+                                <li class="breadcrumb-item"><a href=""><i class="fas fa-home"></i></a></li>
+                                <li class="breadcrumb-item active" aria-current="page">Reference Excel</li>
+                            </ol>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Display success or error messages -->
+     <div class="alert-container" style="display:none;">
+            <div class="alert">
+            </div>
+    </div>
+
+    <!-- Page content -->
+    <div class="container-fluid mt-6">
+         <div class="main-content mt-3">
+            <div class="mt-5">
+                <div class="row">
+                    <div class="col-6">
+                        <h2> Reference Data</h2>
+                    </div>
+                    <div class="col-6 text-right">
+                        <button class="btn btn-primary" data-toggle="modal" data-target="#upload_modal"> Upload New JSON</button>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="p-5" style="border:1px solid #3D7B82; max-height:500px; overflow-y:auto;">
+                            <div class="loader text-center">
+                                <img src="/static/assets/img/theme/Animation - 1731485221969.gif" alt="Loading animation" />
+                            </div>
+                            <pre id="json_data_holder" style="display:none;">
+                               
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+               
+            </div>    
+        </div>
+
+        <!-- The Modal -->
+        <div class="modal fade" id="upload_modal">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+            
+                    <!-- Modal Header -->
+                    <div class="modal-header bg-primary">
+                        <h4 class="modal-title text-white">Upload JSON</h4>
+                        <button type="button" class="close" data-dismiss="modal"><i class="ni ni-fat-remove text-white"></i></button>
+                    </div>
+            
+                    <!-- Modal body -->
+                    <div class="modal-body">
+                        <form method="post" action="" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            <div class="mb-3">
+                                <!-- <label for="json_file">Upload JSON</label> -->
+                                <input type="file" class="form-control" id="json_file" name="json_file" accept="application/json" />
+                            </div>
+                        </form>
+                    </div>
+            
+                    <!-- Modal footer -->
+                    <div class="modal-footer">
+                        <button type="button" id="upload_json" class="btn btn-primary"><i class="ni ni-cloud-upload-96 align-middle mr-2"></i>Upload</button>
+                        <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+                    </div>
+            
+                </div>
+            </div>
+        </div>
+
+      {% include "includes/footer.html" %}
+
+    </div>
+
+{% endblock content %}
+
+<!-- Specific JS goes HERE --> 
+{% block javascripts %}
+
+  <script src="/static/assets/vendor/chart.js/dist/Chart.min.js"></script>
+  <script src="/static/assets/vendor/chart.js/dist/Chart.extension.js"></script>
+  <script>
+        $(document).ready(function(){
+            get_json_data();
+        });
+        
+        function get_json_data(){
+            $.ajax({
+                    url: 'http://185.142.34.165:3800/api/excel/data',
+                    type: "GET",
+                    // contentType: "application/json",
+                    // data: JSON.stringify(jsonData),
+                    success: function(response) {
+                        if(response.success){
+                            // console.log("Response from API:", data);
+                            $('#json_data_holder').text(JSON.stringify(response.data,null,2));
+                            // tostar.success(response.message);
+                        }
+                        else{
+                            $('.alert-container .alert').addClass('alert-error');
+                            $('.alert-container .alert').text(response.message);
+                            $('.alert-container').css('display','block');
+                            
+                        }
+                        hide_alert();
+                        $('.loader').hide();
+                        $('#json_data_holder').show();
+                    },
+                    error: function(error) {
+                        console.error("Error:", error);
+                        $('.alert-container .alert').addClass('alert-error');
+                        $('.alert-container .alert').text(error);
+                        $('.alert-container').css('display','block');
+                        hide_alert();
+                        $('.loader').hide();
+                        $('#json_data_holder').show();
+                    }
+                });
+        }
+
+        $("#upload_json").on("click", function() {
+        const fileInput = $("#json_file")[0];
+        const file = fileInput.files[0];
+
+        if (file && file.type === "application/json") {
+            $('#upload_modal').modal('hide');
+            const reader = new FileReader();
+
+            reader.onload = function(event) {
+                const jsonData = JSON.parse(event.target.result);
+                // console.log("SEND DATA:::", JSON.stringify(jsonData));
+                // Call the Node.js API with the JSON data
+                $.ajax({
+                    url: 'http://185.142.34.165:3800/api/excel/getdata',
+                    type: "POST",
+                    contentType: "application/json",
+                    data: JSON.stringify(jsonData),
+                    success: function(response) {
+                        if(response.success){
+                            console.log('success');
+                            // console.log("Response from API:", data);
+                            $('.alert-container .alert').addClass('alert-success');
+                            $('.alert-container .alert').text(response.message);
+                            $('.alert-container').css('display','block');
+                            
+                            $('#json_data_holder').text(JSON.stringify(response.data, null, 2));
+                        }
+                        else{
+                            $('.alert-container .alert').addClass('alert-error');
+                            $('.alert-container .alert').text(response.message);
+                            $('.alert-container').css('display','block');
+                        }
+                        hide_alert();
+                        $('.loader').hide();
+                        $('#json_data_holder').show();
+                    },
+                    error: function(error) {
+                        console.error("Error:", error);
+                        $('.alert-container .alert').addClass('alert-error');
+                        $('.alert-container .alert').text(error);
+                        $('.alert-container').css('display','block');
+                        hide_alert();
+                        $('.loader').hide();
+                        $('#json_data_holder').show();
+                    }
+                });
+            };
+
+            reader.readAsText(file);
+        } else {
+            alert("Please upload a valid JSON file.");
+        }
+    });
+
+    function hide_alert(){
+        // Auto-hide alerts after 5 seconds
+        setTimeout(function() {
+            if ($('.alert-container')) {
+                $('.alert-container').css('transition',"opacity 0.5s ease")
+                $('.alert-container').css('opacity' , "0");
+                setTimeout(function() {
+                    $('.alert-container').css('display',"none");
+                }, 500); // Extra time to ensure smooth fading
+            }
+        }, 3000); // 5-second delay before fading
+    }
+
+    
+
+  </script>
+
+{% endblock javascripts %}
